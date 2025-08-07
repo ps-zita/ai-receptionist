@@ -1,0 +1,167 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Voice Agent Test Caller</title>
+    <style>
+        body { font-family: sans-serif; display: flex; flex-direction: column; align-items: center; justify-content: center; height: 100vh; background-color: #f0f0f0; }
+        #status { margin-bottom: 20px; font-size: 1.2em; }
+        button { font-size: 1.2em; padding: 10px 20px; margin: 5px; cursor: pointer; border-radius: 5px; border: 1px solid #ccc; }
+        #startBtn { background-color: #4CAF50; color: white; }
+        #stopBtn { background-color: #f44336; color: white; }
+    </style>
+</head>
+<body>
+    <h1>Voice Agent Test Client</h1>
+    <div id="status">Status: Disconnected</div>
+    <button id="startBtn">Start Call</button>
+    <button id="stopBtn" disabled>Stop Call</button>
+
+    <script>
+        const startBtn = document.getElementById('startBtn');
+        const stopBtn = document.getElementById('stopBtn');
+        const statusDiv = document.getElementById('status');
+
+        let socket;
+        let mediaRecorder;
+        // Web Audio API context and source
+        let audioContext;
+        let currentAudioSource = null;
+
+        // This is set to a default backend. Replace with your own WebSocket URL.
+        // For local testing: 'ws://localhost:3003'
+        // For a deployed server: 'wss://your-domain.com'
+        const WEBSOCKET_URL = 'wss://api.modulynk.app';
+
+        // Function to initialize the AudioContext
+        function initAudioContext() {
+            if (!audioContext) {
+                try {
+                    audioContext = new (window.AudioContext || window.webkitAudioContext)();
+                    console.log("AudioContext created.");
+                } catch (e) {
+                    console.error("Web Audio API is not supported in this browser.", e);
+                    statusDiv.textContent = 'Error: Web Audio API not supported.';
+                }
+            }
+        }
+
+        startBtn.addEventListener('click', () => {
+            // AudioContext must be resumed from a user gesture
+            initAudioContext();
+            if (audioContext.state === 'suspended') {
+                audioContext.resume();
+            }
+            
+            navigator.mediaDevices.getUserMedia({ audio: true })
+                .then(stream => {
+                    startCall(stream);
+                })
+                .catch(err => {
+                    console.error('Error getting microphone:', err);
+                    statusDiv.textContent = 'Error: Could not access microphone.';
+                });
+        });
+
+        stopBtn.addEventListener('click', () => {
+            if (mediaRecorder && mediaRecorder.state === 'recording') {
+                mediaRecorder.stop();
+            }
+            if (socket) {
+                socket.close();
+            }
+        });
+
+        function startCall(stream) {
+            socket = new WebSocket(WEBSOCKET_URL);
+
+            socket.onopen = () => {
+                statusDiv.textContent = 'Status: Connected';
+                startBtn.disabled = true;
+                stopBtn.disabled = false;
+
+                mediaRecorder = new MediaRecorder(stream, { mimeType: 'audio/webm;codecs=opus' });
+
+                mediaRecorder.ondataavailable = event => {
+                    if (event.data.size > 0 && socket.readyState === WebSocket.OPEN) {
+                        socket.send(event.data);
+                    }
+                };
+
+                mediaRecorder.start(250); // Send audio data every 250ms
+            };
+
+            socket.onmessage = event => {
+                if (event.data instanceof Blob) {
+                    playAudio(event.data);
+                } else {
+                    try {
+                        const message = JSON.parse(event.data);
+                        if (message.command === 'stop_playing') {
+                            console.log('Received stop_playing command.');
+                            stopCurrentAudio();
+                        }
+                    } catch (e) {
+                        console.error('Received non-Blob message that was not valid JSON:', event.data);
+                    }
+                }
+            };
+
+            socket.onclose = () => {
+                statusDiv.textContent = 'Status: Disconnected';
+                startBtn.disabled = false;
+                stopBtn.disabled = true;
+                stopCurrentAudio();
+                if (mediaRecorder && mediaRecorder.state === 'recording') {
+                    mediaRecorder.stop();
+                }
+            };
+
+            socket.onerror = (error) => {
+                console.error('WebSocket Error:', error);
+                statusDiv.textContent = 'Status: Connection Error';
+            };
+        }
+
+        function playAudio(audioBlob) {
+            if (!audioContext) {
+                console.error("AudioContext not initialized.");
+                return;
+            }
+            // Stop any currently playing audio before starting the new one.
+            stopCurrentAudio();
+
+            audioBlob.arrayBuffer().then(arrayBuffer => {
+                audioContext.decodeAudioData(arrayBuffer, (buffer) => {
+                    const source = audioContext.createBufferSource();
+                    source.buffer = buffer;
+                    source.connect(audioContext.destination);
+                    source.start(0);
+                    
+                    // Keep track of the current source to stop it later if needed.
+                    currentAudioSource = source;
+
+                    source.onended = () => {
+                        // When playback finishes, clear the reference.
+                        if (currentAudioSource === source) {
+                            currentAudioSource = null;
+                        }
+                    };
+                }, (err) => {
+                    console.error('Error decoding audio data:', err);
+                });
+            });
+        }
+
+        function stopCurrentAudio() {
+            if (currentAudioSource) {
+                console.log("Stopping current audio playback.");
+                currentAudioSource.stop(0);
+                currentAudioSource = null;
+            }
+        }
+
+    </script>
+</body>
+</html>

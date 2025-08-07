@@ -1,0 +1,65 @@
+{ 
+  "categories": {
+    "Washes": {
+      "Basic Wash": {
+        "small": 25,
+        "medium": 35,
+        "large": 40
+      },
+      "Gold Wash": {
+        "small": 70,
+        "medium": 75,
+        "large": 80
+      }
+    },
+    "Premium": {
+      "Premium Interior": {
+        "small": 110,
+        "medium": 120,
+        "large": 130
+      },
+      "Premium Exterior": {
+        "small": 110,
+        "medium": 120,
+        "large": 200
+      },
+      "Premium Max": {
+        "small": 180,
+        "medium": 190,
+        "large": 200
+      }
+    },
+    "Detailing": {
+      "Interior Detail": {
+        "small": 250,
+        "medium": 250,
+        "large": 300
+      },
+      "Exterior Detail": {
+        "small": 300,
+        "medium": 320,
+        "large": 350
+      },
+      "Full Detail": {
+        "small": 400,
+        "medium": 420,
+        "large": 450
+      }
+    }
+  },
+  "addons": {
+    "Headlight Restoration": 80,
+    "Steam Clean": 40,
+    "Leather Treatment": 80,
+    "Engine Wash": 80,
+    "Odour Removal": 60,
+    "Sticker Removal": 50,
+    "Scratch Removal": 50,
+    "Dent Removal": 75
+  },
+  "vehicle_sizes": {
+    "small": "Sedans & Hatchbacks",
+    "medium": "Small SUVs",
+    "large": "Trucks, Vans, & Large SUVs"
+  }
+}
