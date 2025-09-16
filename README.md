@@ -22,7 +22,7 @@ Follow these steps to get the project running.
 
 ```bash
 # Clone this repository
-git clone <your-repo-url>
+git clone https://github.com/ps-zita/ai-receptionist
 cd voice-receptionist
 
 # Install the required npm packages
